@@ -66,10 +66,7 @@
     env:
       globalSettings__identityServer__certificatePassword: "WAPRtSlvnkCI5hb75mL6iqq2YGl3p27s"
     # don't forget envs if you need them
-    #env_file:
-      #- /home/{{ docker_user }}/bitwarden/bwdata/docker/global.env
-      #- /home/{{ docker_user }}/bitwarden/bwdata/env/uid.env
-      #- /home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/docker/global.env"
 
 - name: Start bitwarden-admin container
   docker_container:
