@@ -1,0 +1,34 @@
+#- name: Start Bitwarden script
+#  command: "/usr/bin/bash /home/{{ docker_user }}/bitwarden/bitwarden.sh start"
+
+#- name: Stop Bitwarden's nginx container
+#  docker_container:
+#    name: bitwarden-nginx
+#    state: absent
+
+- name: Start bitwarden-mssql container
+  docker_container:
+    image: bitwarden/mssql:{{ bw_mssql_version }}
+    name: "{{ bw_mssql_name }}"
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/mssql/data:/var/opt/mssql/data
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/mssql:/var/opt/mssql/log
+      - /home/{{ docker_user }}/bitwarden/bwdata/mssql/backups:/etc/bitwarden/mssql/backups
+    env:
+      ACCEPT_EULA: 'Y'
+      MSSQL_PID: "Express"
+      SA_PASSWORD: "kMFfRzwgXdTHzfpukZgJ1vxBa53tZ4k5"
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+
+- name: Start bitwarden-web container
+  docker_container:
+    image: bitwarden/web:{{ bw_web_version }}
+    name: bitwarden-web
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/web:/etc/bitwarden/web
+    labels:
+      traefik.http.routers.bitwarden.rule: "Host(`{{ bitwarden_domain }}`)"
+      traefik.enable: "true"
