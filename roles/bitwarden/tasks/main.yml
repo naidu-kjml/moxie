@@ -32,3 +32,85 @@
     labels:
       traefik.http.routers.bitwarden.rule: "Host(`{{ bitwarden_domain }}`)"
       traefik.enable: "true"
+
+- name: Start bitwarden-attachments container
+  docker_container:
+    image: bitwarden/attachments:latest
+    name: bitwarden-attachments
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/core/attachments:/etc/bitwarden/core/attachments
+    # don't forget envs if you need them
+
+- name: Start bitwarden-api container
+  docker_container:
+    image: bitwarden/api:latest
+    name: bitwarden-api
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/api:/etc/bitwarden/logs
+    # don't forget envs if you need them
+
+- name: Start bitwarden-identity container
+  docker_container:
+    image: bitwarden/identity:latest
+    name: bitwarden-identity
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/identity:/etc/bitwarden/identity
+      - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/identity:/etc/bitwarden/logs
+    env:
+      globalSettings__identityServer__certificatePassword: "WAPRtSlvnkCI5hb75mL6iqq2YGl3p27s"
+    # don't forget envs if you need them
+    #env_file:
+      #- /home/{{ docker_user }}/bitwarden/bwdata/docker/global.env
+      #- /home/{{ docker_user }}/bitwarden/bwdata/env/uid.env
+      #- /home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env
+
+- name: Start bitwarden-admin container
+  docker_container:
+    image: bitwarden/admin:latest
+    name: bitwarden-admin
+    restart_policy: always
+    links:
+      - "{{ bw_mssql_name }}"
+    volumes:
+     - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
+     - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+     - /home/{{ docker_user }}/bitwarden/bwdata/logs/admin:/etc/bitwarden/logs
+    # don't forget envs if you need them
+
+- name: Start bitwarden-icons container
+  docker_container:
+    image: bitwarden/icons:latest
+    name: bitwarden-icons
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/icons:/etc/bitwarden/logs
+    # don't forget envs if you need them
+
+# unhealthy, look in to envs and maybe because identity is not yet functional
+- name: Start bitwarden-notifications container
+  docker_container:
+    image: bitwarden/notifications:latest
+    name: bitwarden-notifications
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/notifications:/etc/bitwarden/logs
+    # don't forget envs if you need them
+
+- name: Start bitwarden-events container
+  docker_container:
+    image: bitwarden/events:latest
+    name: bitwarden-events
+    restart_policy: always
+    volumes:
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/events:/etc/bitwarden/logs
+    # don't forget envs if you need them
