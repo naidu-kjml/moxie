@@ -1,3 +1,28 @@
 bitwarden_mssql: bitwarden-mssql
 bitwarden_core_version: 1.32.0
 bitwarden_web_version: 2.12.0
+
+bitwarden_globals:
+  ASPNETCORE_ENVIRONMENT: Production
+  globalSettings__selfHosted: "true"
+  globalSettings__baseServiceUri__internalNotifications: http://notifications:5000
+  globalSettings__baseServiceUri__internalAdmin: http://admin:5000
+  globalSettings__baseServiceUri__internalIdentity: http://identity:5000
+  globalSettings__baseServiceUri__internalApi: http://api:5000
+  globalSettings__baseServiceUri__internalVault: http://web:5000
+  globalSettings__pushRelayBaseUri: https://push.bitwarden.com
+  globalSettings__installation__identityUri: https://identity.bitwarden.com
+  globalSettings__attachment__baseDirectory: /etc/bitwarden/core/attachments
+  globalSettings__dataProtection__directory: /etc/bitwarden/core/aspnet-dataprotection
+  globalSettings__logDirectory: /etc/bitwarden/logs
+  globalSettings__licenseDirectory: /etc/bitwarden/core/licenses
+  globalSettings__mail__smtp__port: "587"
+  globalSettings__mail__smtp__ssl: "false"
+  globalSettings__disableUserRegistration: "false"
+  adminSettings__admins: ""
+  PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  ASPNETCORE_URLS: http://+:5000
+  DOTNET_RUNNING_IN_CONTAINER: "true"
+  ASPNETCORE_VERSION: "2.2.6"
+  LOCAL_UID: "1000"
+  LOCAL_GID: "1000"
