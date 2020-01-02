@@ -1,3 +1,3 @@
-bw_mssql_name: mssql
-bw_mssql_version: 1.32.0
-bw_web_version: 2.12.0
+bitwarden_mssql: bitwarden-mssql
+bitwarden_core_version: 1.32.0
+bitwarden_web_version: 2.12.0

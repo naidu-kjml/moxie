@@ -1,30 +1,35 @@
-#- name: Start Bitwarden script
-#  command: "/usr/bin/bash /home/{{ docker_user }}/bitwarden/bitwarden.sh start"
+- name: Create Bitwarden directory
+  file:
+    path: "/home/{{ docker_user }}/bitwarden"
+    state: directory
+    owner: "{{ docker_user }}"
+    group: "{{ docker_user }}"
 
-#- name: Stop Bitwarden's nginx container
-#  docker_container:
-#    name: bitwarden-nginx
-#    state: absent
+- name: Download Bitwarden script
+  get_url:
+    url: https://go.btwrdn.co/bw-sh
+    dest: "/home/{{ docker_user }}/bitwarden/bitwarden.sh"
+    mode: "0744"
+    owner: "{{ docker_user }}"
+    group: "{{ docker_user }}"
 
 - name: Start bitwarden-mssql container
   docker_container:
-    image: bitwarden/mssql:{{ bw_mssql_version }}
-    name: "{{ bw_mssql_name }}"
+    image: bitwarden/mssql:{{ bitwarden_core_version }}
+    name: "{{ bitwarden_mssql }}"
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/mssql/data:/var/opt/mssql/data
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/mssql:/var/opt/mssql/log
       - /home/{{ docker_user }}/bitwarden/bwdata/mssql/backups:/etc/bitwarden/mssql/backups
     env:
-      ACCEPT_EULA: 'Y'
-      MSSQL_PID: "Express"
-      SA_PASSWORD: "kMFfRzwgXdTHzfpukZgJ1vxBa53tZ4k5"
       LOCAL_UID: "1000"
       LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/mssql.override.env"
 
 - name: Start bitwarden-web container
   docker_container:
-    image: bitwarden/web:{{ bw_web_version }}
+    image: bitwarden/web:{{ bitwarden_web_version }}
     name: bitwarden-web
     restart_policy: always
     volumes:
@@ -32,30 +37,40 @@
     labels:
       traefik.http.routers.bitwarden.rule: "Host(`{{ bitwarden_domain }}`)"
       traefik.enable: "true"
+    env:
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/docker/global.env"
 
 - name: Start bitwarden-attachments container
   docker_container:
-    image: bitwarden/attachments:latest
+    image: bitwarden/attachments:{{ bitwarden_core_version }}
     name: bitwarden-attachments
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/core/attachments:/etc/bitwarden/core/attachments
-    # don't forget envs if you need them
+    env:
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/docker/global.env"
 
 - name: Start bitwarden-api container
   docker_container:
-    image: bitwarden/api:latest
+    image: bitwarden/api:{{ bitwarden_core_version }}
     name: bitwarden-api
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
       - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/api:/etc/bitwarden/logs
-    # don't forget envs if you need them
+    env:
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env"
 
 - name: Start bitwarden-identity container
   docker_container:
-    image: bitwarden/identity:latest
+    image: bitwarden/identity:{{ bitwarden_core_version }}
     name: bitwarden-identity
     restart_policy: always
     volumes:
@@ -64,50 +79,146 @@
       - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/identity:/etc/bitwarden/logs
     env:
-      globalSettings__identityServer__certificatePassword: "WAPRtSlvnkCI5hb75mL6iqq2YGl3p27s"
-    # don't forget envs if you need them
-    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/docker/global.env"
+      ASPNETCORE_ENVIRONMENT: Production
+      globalSettings__selfHosted: "true"
+      globalSettings__baseServiceUri__internalNotifications: http://notifications:5000
+      globalSettings__baseServiceUri__internalAdmin: http://admin:5000
+      globalSettings__baseServiceUri__internalIdentity: http://identity:5000
+      globalSettings__baseServiceUri__internalApi: http://api:5000
+      globalSettings__baseServiceUri__internalVault: http://web:5000
+      globalSettings__pushRelayBaseUri: https://push.bitwarden.com
+      globalSettings__installation__identityUri: https://identity.bitwarden.com
+      globalSettings__attachment__baseDirectory: /etc/bitwarden/core/attachments
+      globalSettings__dataProtection__directory: /etc/bitwarden/core/aspnet-dataprotection
+      globalSettings__logDirectory: /etc/bitwarden/logs
+      globalSettings__licenseDirectory: /etc/bitwarden/core/licenses
+      globalSettings__mail__smtp__port: "587"
+      globalSettings__mail__smtp__ssl: "false"
+      globalSettings__disableUserRegistration: "false"
+      adminSettings__admins: ""
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      ASPNETCORE_VERSION: "2.2.6"
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env"
 
 - name: Start bitwarden-admin container
   docker_container:
-    image: bitwarden/admin:latest
+    image: bitwarden/admin:{{ bitwarden_core_version }}
     name: bitwarden-admin
     restart_policy: always
     links:
-      - "{{ bw_mssql_name }}"
+      - "{{ bitwarden_mssql }}"
     volumes:
-     - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
-     - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
-     - /home/{{ docker_user }}/bitwarden/bwdata/logs/admin:/etc/bitwarden/logs
-    # don't forget envs if you need them
+      - /home/{{ docker_user }}/bitwarden/bwdata/core:/etc/bitwarden/core
+      - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
+      - /home/{{ docker_user }}/bitwarden/bwdata/logs/admin:/etc/bitwarden/logs
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      globalSettings__selfHosted: "true"
+      globalSettings__baseServiceUri__internalNotifications: http://notifications:5000
+      globalSettings__baseServiceUri__internalAdmin: http://admin:5000
+      globalSettings__baseServiceUri__internalIdentity: http://identity:5000
+      globalSettings__baseServiceUri__internalApi: http://api:5000
+      globalSettings__baseServiceUri__internalVault: http://web:5000
+      globalSettings__pushRelayBaseUri: https://push.bitwarden.com
+      globalSettings__installation__identityUri: https://identity.bitwarden.com
+      globalSettings__attachment__baseDirectory: /etc/bitwarden/core/attachments
+      globalSettings__dataProtection__directory: /etc/bitwarden/core/aspnet-dataprotection
+      globalSettings__logDirectory: /etc/bitwarden/logs
+      globalSettings__licenseDirectory: /etc/bitwarden/core/licenses
+      globalSettings__mail__smtp__port: "587"
+      globalSettings__mail__smtp__ssl: "false"
+      globalSettings__disableUserRegistration: "false"
+      adminSettings__admins: ""
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      ASPNETCORE_VERSION: "2.2.6"
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env"
 
 - name: Start bitwarden-icons container
   docker_container:
-    image: bitwarden/icons:latest
+    image: bitwarden/icons:{{ bitwarden_core_version }}
     name: bitwarden-icons
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/icons:/etc/bitwarden/logs
-    # don't forget envs if you need them
+    env:
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/docker/global.env"
 
-# unhealthy, look in to envs and maybe because identity is not yet functional
 - name: Start bitwarden-notifications container
   docker_container:
-    image: bitwarden/notifications:latest
+    image: bitwarden/notifications:{{ bitwarden_core_version }}
     name: bitwarden-notifications
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/notifications:/etc/bitwarden/logs
-    # don't forget envs if you need them
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      globalSettings__selfHosted: "true"
+      globalSettings__baseServiceUri__internalNotifications: http://notifications:5000
+      globalSettings__baseServiceUri__internalAdmin: http://admin:5000
+      globalSettings__baseServiceUri__internalIdentity: http://identity:5000
+      globalSettings__baseServiceUri__internalApi: http://api:5000
+      globalSettings__baseServiceUri__internalVault: http://web:5000
+      globalSettings__pushRelayBaseUri: https://push.bitwarden.com
+      globalSettings__installation__identityUri: https://identity.bitwarden.com
+      globalSettings__attachment__baseDirectory: /etc/bitwarden/core/attachments
+      globalSettings__dataProtection__directory: /etc/bitwarden/core/aspnet-dataprotection
+      globalSettings__logDirectory: /etc/bitwarden/logs
+      globalSettings__licenseDirectory: /etc/bitwarden/core/licenses
+      globalSettings__mail__smtp__port: "587"
+      globalSettings__mail__smtp__ssl: "false"
+      globalSettings__disableUserRegistration: "false"
+      adminSettings__admins: ""
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      ASPNETCORE_VERSION: "2.2.6"
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env"
+
 
 - name: Start bitwarden-events container
   docker_container:
-    image: bitwarden/events:latest
+    image: bitwarden/events:{{ bitwarden_core_version }}
     name: bitwarden-events
     restart_policy: always
     volumes:
       - /home/{{ docker_user }}/bitwarden/bwdata/ca-certificates:/etc/bitwarden/ca-certificates
       - /home/{{ docker_user }}/bitwarden/bwdata/logs/events:/etc/bitwarden/logs
-    # don't forget envs if you need them
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      globalSettings__selfHosted: "true"
+      globalSettings__baseServiceUri__internalNotifications: http://notifications:5000
+      globalSettings__baseServiceUri__internalAdmin: http://admin:5000
+      globalSettings__baseServiceUri__internalIdentity: http://identity:5000
+      globalSettings__baseServiceUri__internalApi: http://api:5000
+      globalSettings__baseServiceUri__internalVault: http://web:5000
+      globalSettings__pushRelayBaseUri: https://push.bitwarden.com
+      globalSettings__installation__identityUri: https://identity.bitwarden.com
+      globalSettings__attachment__baseDirectory: /etc/bitwarden/core/attachments
+      globalSettings__dataProtection__directory: /etc/bitwarden/core/aspnet-dataprotection
+      globalSettings__logDirectory: /etc/bitwarden/logs
+      globalSettings__licenseDirectory: /etc/bitwarden/core/licenses
+      globalSettings__mail__smtp__port: "587"
+      globalSettings__mail__smtp__ssl: "false"
+      globalSettings__disableUserRegistration: "false"
+      adminSettings__admins: ""
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      ASPNETCORE_VERSION: "2.2.6"
+      LOCAL_UID: "1000"
+      LOCAL_GID: "1000"
+    env_file: "/home/{{ docker_user }}/bitwarden/bwdata/env/global.override.env"
