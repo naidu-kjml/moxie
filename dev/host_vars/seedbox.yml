@@ -1,0 +1,7 @@
+# base
+allow_reboot: false
+manage_network: false
+
+# seedbox
+rpc_password: transmitpassword
+rpc_whitelist: 172.*.*.*

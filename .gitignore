@@ -1,8 +1,2 @@
 .vagrant
-/*.yml
-/*.yaml
-!moxie.yml
-!docker.yml
-!dockerbox.yml
-!hypervisor.yml
 /environments/

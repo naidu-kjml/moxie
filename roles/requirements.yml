@@ -2,3 +2,8 @@
   scm: git
   version: master
   name: minecraft
+
+- src: https://github.com/krislamo/ansible-seedbox
+  scm: git
+  version: master
+  name: seedbox
